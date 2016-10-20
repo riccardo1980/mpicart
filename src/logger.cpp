@@ -3,7 +3,7 @@
  * @author Riccardo Zanella
  * @date 03/2016
  *
- * Contacts: riccardo.zanella@unife.it
+ * Contacts: riccardo.zanella@gmail.com
  *
  */
 #include <stdexcept>
