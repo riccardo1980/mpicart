@@ -1,0 +1,10 @@
+TODO:
+
+- add getter to DistributedDescription
+- check for not needed copies in getters
+
+Resources:
+http://stackoverflow.com/questions/9269399/sending-blocks-of-2d-array-in-c-using-mpi
+http://stackoverflow.com/questions/29325513/scatter-matrix-blocks-of-different-sizes-using-mpi
+
+
