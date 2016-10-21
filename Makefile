@@ -41,7 +41,7 @@ TESTSRCDIR = testsrc
 OBJDIR = obj
 BINDIR = bin
 
-CXXFLAGS += -std=c++0x -I$(SRCDIR)
+CXXFLAGS += -std=c++11 -I$(SRCDIR)
 
 SRCS = $(notdir $(wildcard $(SRCDIR)/*.cpp))
 HDRS = $(wildcard $(SRCDIR)/*.hpp)

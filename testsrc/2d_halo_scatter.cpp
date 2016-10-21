@@ -9,11 +9,14 @@
 
 #include <stdexcept>
 #include <iostream>
+#include <sstream>
 #include <cstdlib>
+#include <string>
 #include <cmath>
 
 #include <vector>
 #include <algorithm>
+#include <map>
 
 #include "mpi.h"
 
@@ -27,49 +30,91 @@ using std::cerr;
 using std::cout;
 using std::endl;
 using std::vector;
+using std::string;
 using std::runtime_error;
 
 using namespace vector_helper;
 //#define PRINT_ALL
 //#define PRINT_LOCAL
 
+namespace inputCheck {
+  static const std::map < std::string, HaloType::type > halo_set = { 
+    {"NO", HaloType::Unused}, 
+    {"FULL", HaloType::Full},
+    {"TIGHT", HaloType::Tight} 
+  };
+
+  template <typename F, typename S>
+    std::ostream& operator<< ( std::ostream& os, const std::map<F,S>& mymap ){
+      typename std::map< std::string, HaloType::type >::const_iterator it = mymap.begin(); 
+      typename std::map< std::string, HaloType::type >::const_iterator it_end = mymap.end(); 
+
+      for( ; it != it_end; ++it )
+        os << " " << it->first;
+
+      return os;
+
+    }
+
+  /**
+   * Controls the string containing requested halo type and
+   * sets output accordingly
+   *
+   * @param in const string storing halo command line parameter
+   * @return requested halo type
+   *
+   * If uppercase of input string is gound in global halo_set map,
+   * corrispondent value is returned, otherwise a runime error 
+   * is thrown. Exception message will then contain accepted strings for
+   * halo command line parameter.
+   *
+   */
+  HaloType::type haloFromInput( const std::string& in ){
+
+    std::string in_upper( in );
+    std::transform( in_upper.begin(), in_upper.end(), in_upper.begin(), toupper ); 
+
+    std::map< std::string, HaloType::type >::const_iterator ht 
+      = halo_set.find( in_upper );  
+
+    if ( ht != halo_set.end() )
+      return ht->second;
+    else{
+      std::stringstream ss;
+      ss << "Halo type must be one of: "
+        << halo_set;
+      throw runtime_error( ss.str() );
+    } 
+
+  }
+}
 
 int main (int argc, char *argv[]){
   try{
     mpiSafeCall( MPI_Init(&argc, &argv) );
-
-    int ht = 1;
-
-    // 1 no halo
-    // 2 full halos
-    // 3 tight halos
-
-    if ( argc == 2)
-      ht = atoi( argv[1] );
-    
-    int dh = 20; // default halo size
-
-    HaloType::type haloType;
-    switch (ht){
-      case 1: haloType = HaloType::Unused; break;
-      case 2: haloType = HaloType::Full; break;
-      case 3: haloType = HaloType::Tight; break;
-      default:
-        throw runtime_error("Halo types 1 to 3");
-    }
-
-    vector<int> tileSplit = { 3, 3};
-    vector<int> periodicity = { 0, 0};
-    vector<int> dims = {1200,1200}; 
-    vector<double> data; 
-
-
-    CartSplitter cs( tileSplit, periodicity, MPI_COMM_WORLD );
-    
     int worldRank, worldSize;
     mpiSafeCall( MPI_Comm_rank ( MPI_COMM_WORLD, &worldRank ) );
     mpiSafeCall( MPI_Comm_size ( MPI_COMM_WORLD, &worldSize ) );
+   
+    HaloType::type haloType = HaloType::Unused; 
+    vector<int> tileSplit = { 3, 3 };
+    vector<int> periodicity = { 0, 0 };
+    vector<int> dims = { 1200, 1200 }; 
+    int dh = 20; // default halo size
 
+    if ( worldRank == 0) {
+      switch ( argc ){
+        case 2:
+          haloType = inputCheck::haloFromInput( argv[1] );
+      }
+    }
+
+    // Broadcast of test parameters
+    MPI_Bcast( &haloType, 1, MPI_INT, 0, MPI_COMM_WORLD );
+
+    vector<double> data; 
+    CartSplitter cs( tileSplit, periodicity, MPI_COMM_WORLD );
+    
     if ( cs.inGrid() ){
       MPI_Comm comm = cs.getCommunicator();
 
