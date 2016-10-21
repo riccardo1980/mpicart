@@ -77,7 +77,7 @@ int main (int argc, char *argv[]){
       int cartSize = cs.getSize();
 
       int ROOT = 0;  // data generator
-      int COLLECTROOT = 1; // data collector
+      int COLLECTROOT = 0; // data collector
 
       // ROOT fills data to be scattered
       if ( ROOT == cartRank ){
@@ -118,13 +118,13 @@ int main (int argc, char *argv[]){
       } 
 #endif      
 
-      vector<double> newData;
+      vector<double> dataBack;
       if ( COLLECTROOT == cartRank ){
-        newData = vector<double>( prod( dims ) );
+        dataBack = vector<double>( prod( dims ) );
       }
       
-      // gathering internal part
-      cs.gather( localData, newData, COLLECTROOT, dd );
+      // gathering internal portions
+      cs.gather( localData, dataBack, COLLECTROOT, dd );
 
       // data print
       if ( COLLECTROOT == cartRank ) {
@@ -135,20 +135,25 @@ int main (int argc, char *argv[]){
 #endif
       }
 
-      // check
+      if ( COLLECTROOT != ROOT ){
+      // move collected data to ROOT 
+        if ( cartRank == ROOT ){
+          dataBack = vector<double>( prod( dims ) );
+          MPI_Status status;
+          mpiSafeCall( MPI_Recv( &dataBack[0], data.size(), MPI_DOUBLE, COLLECTROOT, 11, comm, &status ) ); 
+        } 
+        if ( cartRank == COLLECTROOT ) {
+          mpiSafeCall( MPI_Send( &dataBack[0], dataBack.size(), MPI_DOUBLE, ROOT, 11, comm ) ); 
+        }
+      }
+     
+      // ROOT checks for errors 
       if ( cartRank == ROOT ){
-        vector<double> dataBack ( data.size() ); 
-        MPI_Status status;
-        mpiSafeCall( MPI_Recv( &dataBack[0], data.size(), MPI_DOUBLE, COLLECTROOT, 11, comm, &status ) ); 
+          int ee = 0; 
+          for( unsigned int ii = 0; ii <  data.size() ; ++ii )
+            ee += ( std::abs( dataBack[ii] - data[ii] ) / std::abs( data[ii] ) > 1e-12 );
 
-        int ee = 0; 
-        for( unsigned int ii = 0; ii <  data.size() ; ++ii )
-          ee += ( std::abs( dataBack[ii] - data[ii] ) / std::abs( data[ii] ) > 1e-12 );
-
-        cout << "Errors: " << ee << endl;
-      } 
-      if ( cartRank == COLLECTROOT ) {
-        mpiSafeCall( MPI_Send( &newData[0], newData.size(), MPI_DOUBLE, ROOT, 11, comm ) ); 
+          cout << "Errors: " << ee << endl;
       }
 
       delete dd;
