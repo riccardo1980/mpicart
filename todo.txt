@@ -3,6 +3,7 @@ TODO:
 - add getter to DistributedDescription
 - check for not needed copies in getters
 - documentation for test sources
+- change Makefile in order to produce static/shared library, (use automake?)
 
 Resources:
 http://stackoverflow.com/questions/9269399/sending-blocks-of-2d-array-in-c-using-mpi
