@@ -64,8 +64,14 @@ CartSplitter::CartSplitter( const std::vector<int>& dims,
 }
 
 CartSplitter::~CartSplitter( ) {
-  if( _inGrid )
+  try {
+    if( _inGrid )
       mpiSafeCall( MPI_Comm_free( &_comm ) );
+  } catch ( std::exception &e ){
+        std::cerr << "Errors on CartSplitter dtor: " 
+          << e.what() << std::endl;
+      }
+
 } 
 
 std::vector<int> CartSplitter::getCoordinates( int rank ) const {

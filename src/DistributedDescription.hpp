@@ -80,24 +80,30 @@ class DistributedDescription {
 
   public:
     ~DistributedDescription () {
+    
+      try {
 
-      for( unsigned int ii = 0; ii < _receiveTypes.size(); ++ii ){
-        if ( _receiveTypes[ii] != 0 )
-          mpiSafeCall( MPI_Type_free( &_receiveTypes[ii] ) );
-      } 
+        for( unsigned int ii = 0; ii < _receiveTypes.size(); ++ii ){
+          if ( _receiveTypes[ii] != 0 )
+            mpiSafeCall( MPI_Type_free( &_receiveTypes[ii] ) );
+        } 
 
-      for( unsigned int ii = 0; ii < _sendTypes.size(); ++ii ){
-        if ( _sendTypes[ii] != 0 )
-          mpiSafeCall( MPI_Type_free( &_sendTypes[ii] ) );
+        for( unsigned int ii = 0; ii < _sendTypes.size(); ++ii ){
+          if ( _sendTypes[ii] != 0 )
+            mpiSafeCall( MPI_Type_free( &_sendTypes[ii] ) );
+        }
+
+        mpiSafeCall( MPI_Type_free( &_localDatatype ) );
+
+        for( unsigned int ii = 0; ii < _types.size(); ++ii ){
+          if ( _types[ii] != 0 )
+            mpiSafeCall( MPI_Type_free( &_types[ii] ) );
+        } 
+      } catch ( std::exception &e ){
+        std::cerr << "Errors on DistributedDescription dtor: " 
+          << e.what() << std::endl;
       }
-    
-      mpiSafeCall( MPI_Type_free( &_localDatatype ) );
 
-      for( unsigned int ii = 0; ii < _types.size(); ++ii ){
-        if ( _types[ii] != 0 )
-          mpiSafeCall( MPI_Type_free( &_types[ii] ) );
-      } 
-    
     }; 
     
     /**

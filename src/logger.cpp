@@ -7,6 +7,8 @@
  *
  */
 #include <stdexcept>
+#include <iostream>
+
 #include "logger.hpp"
 
 int Logger::log(const char *fmt, ...){
@@ -41,7 +43,12 @@ MPILogger::MPILogger(MPI_Comm comm, int root )
 }
 
 MPILogger::~MPILogger() {
+  try {
   mpiSafeCall( MPI_Comm_free( &_comm ) ) ;
+  } catch ( std::exception &e ){
+    std::cerr << "Errors on MPILogger dtor: " 
+      << e.what() << std::endl;
+  }
 }
 
 int MPILogger::log(const char *fmt, ...){
