@@ -9,9 +9,11 @@
 
 #include <stdexcept>
 #include <iostream>
+#include <iomanip>
 #include <vector>
 #include <cstdlib>
 #include <cmath>
+#include <algorithm>
 
 #include "mpi.h"
 #include "safecheck.hpp"
@@ -25,15 +27,71 @@ using std::cout;
 using std::endl;
 using std::vector;
 
+class pretty;
+
+std::ostream& operator<< ( std::ostream& os, const pretty& data );
+
+class pretty {
+  public:
+    pretty ( const std::vector<int>& data, bool showpos=false, const char sep=','):
+      _data(data), _showpos(showpos), _sep(sep){};
+    friend std::ostream& operator<< ( std::ostream& os, const pretty& data );
+  private:
+    const std::vector<int>& _data;
+    bool _showpos;
+    const char _sep;
+};
+
+std::ostream& operator<< ( std::ostream& os, const pretty& data ){
+
+  std::vector<int>::const_iterator it = data._data.begin();
+  std::vector<int>::const_iterator it_end = data._data.end();
+
+  std::ios::fmtflags f ( os.flags() );
+
+  if ( data._showpos )
+    os << std::showpos;
+
+  for( ; it < it_end-1; ++it)
+    os << std::setw(1) 
+      << " " << *it << data._sep;
+
+  os << std::setw(1) << " " << *it;
+
+  os.flags( f ); 
+  return os;
+}
+
+
+void coo_print( const std::vector<int>& data, bool showpos=false, const char sep=',' ){
+
+  std::vector<int>::const_iterator it = data.begin();
+  std::vector<int>::const_iterator it_end = data.end();
+
+  if (showpos){
+  for ( ; it < it_end-1; ++it )
+    printf(" %+2d%c", *it, sep );
+
+  printf(" %+2d", *it );
+  }
+  else{
+  for ( ; it < it_end-1; ++it )
+    printf(" %2d%c", *it, sep );
+
+  printf(" %2d", *it );
+  }
+
+
+}
 
 using namespace vector_helper;
                         
 int main(int argc, char *argv[]){
   try {
 
-    std::vector<int> dims      = { 1000, 1000 };
-    std::vector<int> tileSplit = {    3,    3 };
-    std::vector<int> periodic  = {    0,    0 }; 
+    std::vector<int> dims      = { 1000, 1000, 1000 };
+    std::vector<int> tileSplit = {    3,    3,    3 };
+    std::vector<int> periodic  = {    0,    1,    0 }; 
     int reorder    = 1;
 
 
@@ -59,17 +117,21 @@ int main(int argc, char *argv[]){
 
       vector<int>::iterator it = neighbours.begin();
       vector<int>::iterator it_end = neighbours.end();
-      for( unsigned int ii = 0; ii < neighbours.size(); ++ii )
-        neighbours[ii] = cs.getRankByOffset( directions[ii] );
+      for( unsigned int ii = 0; it < it_end; ++ii, ++it )
+        *it = cs.getRankByOffset( directions[ii] );
 
       // print my neighbours
       for( int rank = 0; rank < cs.getSize(); ++rank ){
+
         if ( cs.getRank() == rank ){
           cout << "Rank: " << rank << endl;
           for( unsigned int ii = 0; ii < neighbours.size(); ++ii ){
-            Log.log( " Node %2d of %2d ( %2d, %2d ) %2d ( %+2d, %+2d ) \n", 
-                cs.getRank(), cs.getSize(), coords[0], coords[1], 
-                neighbours[ii], directions[ii][0], directions[ii][1] );
+            cout << " Node " << std::setw(2) << cs.getRank() 
+              << " of "  << std::setw(2) << cs.getSize()
+              << " (" << pretty ( coords ) << " ) "
+              << std::setw(2) << neighbours[ii] 
+              << " (" << pretty ( directions[ii], true ) 
+              << " ) " << endl; 
           }
           cout << endl;
         }

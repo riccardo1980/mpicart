@@ -38,6 +38,7 @@ using namespace vector_helper;
 //#define PRINT_LOCAL
 
 namespace inputCheck {
+
   static const std::map < std::string, HaloType::type > halo_set = { 
     {"NO", HaloType::Unused}, 
     {"FULL", HaloType::Full},
