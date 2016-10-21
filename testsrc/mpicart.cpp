@@ -62,28 +62,6 @@ std::ostream& operator<< ( std::ostream& os, const pretty& data ){
   return os;
 }
 
-
-void coo_print( const std::vector<int>& data, bool showpos=false, const char sep=',' ){
-
-  std::vector<int>::const_iterator it = data.begin();
-  std::vector<int>::const_iterator it_end = data.end();
-
-  if (showpos){
-  for ( ; it < it_end-1; ++it )
-    printf(" %+2d%c", *it, sep );
-
-  printf(" %+2d", *it );
-  }
-  else{
-  for ( ; it < it_end-1; ++it )
-    printf(" %2d%c", *it, sep );
-
-  printf(" %2d", *it );
-  }
-
-
-}
-
 using namespace vector_helper;
                         
 int main(int argc, char *argv[]){
