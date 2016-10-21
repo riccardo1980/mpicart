@@ -17,7 +17,14 @@ then compile using
 make
 ```
 
+### Tested Architectures
+
+| OS                    | compiler  | MPI library |
+| --------------------- | --------- | ----------- |
+| Linux x86_64 (Debian) | g++ 6.2.0 | MPICH 3.2   |
+
 ## Author
+
 * **Riccardo Zanella** [riccardo1980](https://github.com/riccardo1980)
 
 ## License
