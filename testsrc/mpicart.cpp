@@ -26,6 +26,7 @@ using std::cerr;
 using std::cout;
 using std::endl;
 using std::vector;
+using std::runtime_error;
 
 template <typename T>
 class pretty;
@@ -111,22 +112,84 @@ std::ostream& operator<< ( std::ostream& os,
 }
 
 using namespace vector_helper;
-                        
+
+// admissible inputs:
+// parameters == 1
+// value==1 -> 1d test ( np >=  3 )
+// value==2 -> 2d test ( np >=  9 )
+// value==3 -> 3d test ( np >= 27 )
+
+// parameters == 3
+// tileSplit:  n_0,n_1,n_2,...,n_d-1  d_ii >0 
+// periodic:   p_0,p_1,p_2,...,p_d-1  p_ii = [0|1]
+// reorder:    value                  [0|1]
+
 int main(int argc, char *argv[]){
   try {
-
-    std::vector<int> dims      = { 1000, 1000, 1000 };
-    std::vector<int> tileSplit = {    3,    3,    3 };
-    std::vector<int> periodic  = {    0,    1,    0 }; 
-    int reorder    = 1;
-
+   
     mpiSafeCall( MPI_Init(&argc, &argv) );
     int worldRank, worldSize;
     MPI_Comm_rank ( MPI_COMM_WORLD, &worldRank );
     MPI_Comm_size ( MPI_COMM_WORLD, &worldSize );
 
-    Logger Log;
+    std::vector<int> tileSplit = { 3, 3, 3 };
+    std::vector<int> periodic  = { 0, 1, 0 }; 
+    int reorder    = 1;
 
+    int testType = 0; // -1==error 0==custom, 1,2,3==d
+
+    if ( worldRank == 0 ){
+      switch ( argc ){
+        case 2: // selected a predefined test
+          std::istringstream( argv[1] ) >> testType;
+          break;
+        default:
+          throw runtime_error("Select a test"); 
+      }
+  
+     // input checking 
+     if ( testType > 3 || testType < 0 )
+      throw runtime_error("Tests are from 1 to 3"); 
+
+     // TODO: check for enough nodes to run test
+
+    } 
+
+    // communicate test type 
+    MPI_Bcast( &testType, 1, MPI_INT, 0, MPI_COMM_WORLD );
+
+    if ( testType == 0 ){
+
+      // TODO: communicate all inputs
+      throw runtime_error("Not implemented yet");
+    }
+
+    else{
+
+      switch (testType ){
+        case 1: 
+          tileSplit = { 3 };
+          periodic  = { 1 };
+          reorder = 1; 
+          break;
+
+        case 2:
+          tileSplit = { 3, 3 };
+          periodic  = { 1, 1 };
+          reorder = 1; 
+          break;
+
+        case 3:
+          tileSplit = { 3, 3, 3 };
+          periodic  = { 1, 1, 1 };
+          reorder = 1; 
+          break;
+      
+      }
+    
+    }
+
+    Logger Log;
     CartSplitter cs( tileSplit, periodic, MPI_COMM_WORLD, reorder );
     
     if ( cs.inGrid() ){
@@ -149,12 +212,16 @@ int main(int argc, char *argv[]){
       for( int rank = 0; rank < cs.getSize(); ++rank ){
 
         if ( cs.getRank() == rank ){
-          cout << "Rank: " << rank << endl;
+          cout << "Node " << std::setw(2) << cs.getRank() 
+            << " of " << std::setw(2) << cs.getSize()
+            << " [ " << std::setw(2)<< worldRank 
+            << " / " << std::setw(2) << worldSize << " ]"
+            << " coordinates:"
+            << pretty<int>( coords ).preamble(" ( ").epilogue(" ):").separator(", ")
+            << endl;
+
           for( unsigned int ii = 0; ii < neighbours.size(); ++ii ){
-            cout << " Node " << cs.getRank() 
-              << " of " << cs.getSize()
-              << pretty<int>( coords ).preamble(" ( ").epilogue(" ) ").separator(", ")
-              << neighbours[ii] 
+            cout << "   " << std::setw(2) << neighbours[ii] 
               << pretty<int>( directions[ii] ).preamble(" ( ").epilogue(" ) ")
               .separator(", ").showpos() 
               << endl; 
@@ -162,10 +229,11 @@ int main(int argc, char *argv[]){
           cout << endl;
         }
         cs.barrier();
-        //mpiSafeCall( MPI_Barrier( cs.getCommunicator() ) );
       }
     }
-    else
+    mpiSafeCall( MPI_Barrier( MPI_COMM_WORLD ) );
+    
+    if ( !cs.inGrid() ) 
       Log.log( " Node %2d of %2d not in grid\n", worldRank, worldSize );
     
   }
