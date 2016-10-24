@@ -9,10 +9,12 @@ A working MPI environment: mpic++ is required to compile sources.
 
 ### Installing
 Simply download the zip file, or clone the project using:
+
 ``` 
 git clone https://github.com/riccardo1980/mpicart.git mpicart
 ```
-then compile using
+then compile using:
+
 ```
 make
 ```
