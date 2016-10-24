@@ -27,39 +27,87 @@ using std::cout;
 using std::endl;
 using std::vector;
 
+template <typename T>
 class pretty;
 
-std::ostream& operator<< ( std::ostream& os, const pretty& data );
+template <typename T>
+std::ostream& operator<< ( std::ostream& os, 
+    const pretty<T>& data );
 
+template <typename T>
 class pretty {
   public:
-    pretty ( const std::vector<int>& data, bool showpos=false, const char sep=','):
-      _data(data), _showpos(showpos), _sep(sep){};
-    friend std::ostream& operator<< ( std::ostream& os, const pretty& data );
+    explicit pretty( const std::vector<T>& data ) :
+      _data( data ), _preamble(), _separator(), 
+      _epilogue(), _showpos(false) {};
+    friend 
+      std::ostream& operator<<<> ( std::ostream& os,
+          const pretty<T>& data );
+
+    pretty<T>& preamble (const std::string& pre){
+      _preamble = pre;
+      return *this;
+    } 
+
+    pretty<T>& separator (const std::string& sep){
+      _separator = sep;
+      return *this;
+    } 
+
+    pretty<T>& epilogue (const std::string& epi){
+      _epilogue = epi;
+      return *this;
+    } 
+
+    pretty<T>& showpos (){
+      _showpos = true;
+      return *this; 
+    } 
+
+    pretty<T>& noshowpos (){
+      _showpos = false;
+      return *this; 
+    } 
+
+    pretty<T>& preamble (const char *pre){
+      return preamble( std::string(pre) ); 
+    } 
+
+    pretty<T>& separator (const char *sep){
+      return separator( std::string(sep) ); 
+    } 
+
+    pretty<T>& epilogue (const char *epi){
+      return epilogue( std::string(epi) ); 
+    } 
+
   private:
-    const std::vector<int>& _data;
+    std::string _preamble;
+    std::string _separator;
+    std::string _epilogue;
     bool _showpos;
-    const char _sep;
+    const std::vector<T>& _data;
 };
 
-std::ostream& operator<< ( std::ostream& os, const pretty& data ){
-
-  std::vector<int>::const_iterator it = data._data.begin();
-  std::vector<int>::const_iterator it_end = data._data.end();
+template <typename T>
+std::ostream& operator<< ( std::ostream& os, 
+    const pretty<T>& data ){
 
   std::ios::fmtflags f ( os.flags() );
 
   if ( data._showpos )
     os << std::showpos;
 
-  for( ; it < it_end-1; ++it)
-    os << std::setw(1) 
-      << " " << *it << data._sep;
+  os << std::scientific;
+  os << data._preamble;
+  typename std::vector<T>::const_iterator it = data._data.begin(); 
+  for ( ; it < data._data.end()-1; ++it )
+   os << *it << data._separator;  
 
-  os << std::setw(1) << " " << *it;
+  os << *it << data._epilogue;
+  os.flags( f );
 
-  os.flags( f ); 
-  return os;
+  return os; 
 }
 
 using namespace vector_helper;
@@ -71,7 +119,6 @@ int main(int argc, char *argv[]){
     std::vector<int> tileSplit = {    3,    3,    3 };
     std::vector<int> periodic  = {    0,    1,    0 }; 
     int reorder    = 1;
-
 
     mpiSafeCall( MPI_Init(&argc, &argv) );
     int worldRank, worldSize;
@@ -104,12 +151,13 @@ int main(int argc, char *argv[]){
         if ( cs.getRank() == rank ){
           cout << "Rank: " << rank << endl;
           for( unsigned int ii = 0; ii < neighbours.size(); ++ii ){
-            cout << " Node " << std::setw(2) << cs.getRank() 
-              << " of "  << std::setw(2) << cs.getSize()
-              << " (" << pretty ( coords ) << " ) "
-              << std::setw(2) << neighbours[ii] 
-              << " (" << pretty ( directions[ii], true ) 
-              << " ) " << endl; 
+            cout << " Node " << cs.getRank() 
+              << " of " << cs.getSize()
+              << pretty<int>( coords ).preamble(" ( ").epilogue(" ) ").separator(", ")
+              << neighbours[ii] 
+              << pretty<int>( directions[ii] ).preamble(" ( ").epilogue(" ) ")
+              .separator(", ").showpos() 
+              << endl; 
           }
           cout << endl;
         }
