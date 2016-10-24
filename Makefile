@@ -15,7 +15,6 @@ LFLAGS =
 
 # DO NOT CHANGE LINES BELOW
 ###########################################################################
-
 OSUPPER = $(strip $(shell uname -s 2>/dev/null | tr [:lower:] [:upper:]) )
 
 ifeq ($(OSUPPER),LINUX)
@@ -40,6 +39,7 @@ SRCDIR = src
 TESTSRCDIR = testsrc
 OBJDIR = obj
 BINDIR = bin
+LIBDIR = lib
 
 CXXFLAGS += -std=c++0x -I$(SRCDIR)
 
@@ -49,14 +49,26 @@ OBJS = $(SRCS:%.cpp=$(OBJDIR)/%.o$(SUFFIX))
 
 .PHONY: all clean cleanall makedir
 
-all: makedir \
-  $(BINDIR)/mpicart$(SUFFIX) \
-  $(BINDIR)/2d_halo_scatter$(SUFFIX) 
+lib: makelibdir $(LIBDIR)/libmpicart$(SUFFIX).a
+
+test: maketestdir lib \
+	$(BINDIR)/2d_halo_scatter$(SUFFIX) \
+	$(BINDIR)/mpicart$(SUFFIX)
+
+all: test 
 
 # COMPILATION: all files other than main files
 $(OBJDIR)/%.o$(SUFFIX): $(SRCDIR)/%.cpp $(HDRS)
 	@echo compiling $@
 	$(VERB)$(CXX) -c -o $@ $(CXXFLAGS) $<
+
+# LIBRARY
+
+$(LIBDIR)/libmpicart$(SUFFIX).a: $(OBJS)
+	@echo creating $@
+	$(VERB)ar rcs $@ $^
+
+# TESTS
 
 # COMPILATION: main files
 
@@ -70,24 +82,28 @@ $(OBJDIR)/2d_halo_scatter.o$(SUFFIX): $(TESTSRCDIR)/2d_halo_scatter.cpp $(HDRS)
 
 # LINKING
 
-$(BINDIR)/mpicart$(SUFFIX): $(OBJDIR)/mpicart.o$(SUFFIX) $(OBJS)
+$(BINDIR)/mpicart$(SUFFIX): $(OBJDIR)/mpicart.o$(SUFFIX) $(LIBDIR)/libmpicart$(SUFFIX).a
 	@echo linking $@
-	$(VERB)$(LD) -o $@ $^ $(LFLAGS)
+	$(VERB)$(LD) -o $@ $< $(LFLAGS) -L $(LIBDIR) -lmpicart$(SUFFIX)
 
-$(BINDIR)/2d_halo_scatter$(SUFFIX): $(OBJDIR)/2d_halo_scatter.o$(SUFFIX) $(OBJS)
+$(BINDIR)/2d_halo_scatter$(SUFFIX): $(OBJDIR)/2d_halo_scatter.o$(SUFFIX) $(LIBDIR)/libmpicart$(SUFFIX).a
 	@echo linking $@
-	$(VERB)$(LD) -o $@ $^ $(LFLAGS)
-
+	$(VERB)$(LD) -o $@ $< $(LFLAGS) -L $(LIBDIR) -lmpicart$(SUFFIX)
 
 doc:
 	doxygen mpicart.doxy
 
-makedir:
+makelibdir:
+	$(VERB)mkdir -p $(OBJDIR)
+	$(VERB)mkdir -p $(LIBDIR)
+
+maketestdir:
 	$(VERB)mkdir -p $(OBJDIR)
 	$(VERB)mkdir -p $(BINDIR)
+	$(VERB)mkdir -p $(LIBDIR)
 
 clean:
-	$(VERB)rm -rf $(OBJDIR) $(BINDIR)
+	$(VERB)rm -rf $(OBJDIR) $(BINDIR) $(LIBDIR)
 
 cleanall:
 	$(VERB)make -C ./ clean
