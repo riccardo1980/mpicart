@@ -51,12 +51,11 @@ OBJS = $(SRCS:%.cpp=$(OBJDIR)/%.o$(SUFFIX))
 
 lib: makelibdir $(LIBDIR)/libmpicart$(SUFFIX).a
 
-test: maketestdir lib $(BINDIR)/2d_halo_scatter$(SUFFIX)
+test: maketestdir lib \
+	$(BINDIR)/2d_halo_scatter$(SUFFIX) \
+	$(BINDIR)/mpicart$(SUFFIX)
 
-all: makedir \
-  $(LIBDIR)/libmpicart$(SUFFIX).a \
-  $(BINDIR)/mpicart$(SUFFIX) \
-  $(BINDIR)/2d_halo_scatter$(SUFFIX) 
+all: test 
 
 # COMPILATION: all files other than main files
 $(OBJDIR)/%.o$(SUFFIX): $(SRCDIR)/%.cpp $(HDRS)
