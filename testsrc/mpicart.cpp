@@ -9,6 +9,7 @@
 
 #include <stdexcept>
 #include <iostream>
+#include <sstream>
 #include <iomanip>
 #include <vector>
 #include <cstdlib>
@@ -124,6 +125,17 @@ using namespace vector_helper;
 // periodic:   p_0,p_1,p_2,...,p_d-1  p_ii = [0|1]
 // reorder:    value                  [0|1]
 
+struct testconfig {
+  std::vector<int> tileSplit;
+  std::vector<int> periodic;
+  int reorder;  
+};
+
+static const testconfig testParameters[] = { 
+  { .tileSplit = {3}, .periodic = {1}, .reorder = 1 },
+  { .tileSplit = {3,3}, .periodic = {1,1}, .reorder = 1 },
+  { .tileSplit = {3,3,3}, .periodic = {1,1,1}, .reorder = 1 } };
+
 int main(int argc, char *argv[]){
   try {
    
@@ -132,65 +144,67 @@ int main(int argc, char *argv[]){
     MPI_Comm_rank ( MPI_COMM_WORLD, &worldRank );
     MPI_Comm_size ( MPI_COMM_WORLD, &worldSize );
 
-    std::vector<int> tileSplit = { 3, 3, 3 };
-    std::vector<int> periodic  = { 0, 1, 0 }; 
-    int reorder    = 1;
-
     int testType = 0; // -1==error 0==custom, 1,2,3==d
-
+    testconfig tc;
+    
     if ( worldRank == 0 ){
       switch ( argc ){
         case 2: // selected a predefined test
           std::istringstream( argv[1] ) >> testType;
           break;
+        case 1: // dummy for tc communication test
+          tc.tileSplit = { 1, 2, 3 };
+          tc.reorder   = 1;
+          tc.periodic  = { 0, 0, 0 };
+          break;  
         default:
           throw runtime_error("Select a test"); 
       }
-  
-     // input checking 
-     if ( testType > 3 || testType < 0 )
-      throw runtime_error("Tests are from 1 to 3"); 
 
-     // TODO: check for enough nodes to run test
+      // input checking 
+      if ( testType > 3 || testType < 0 )
+        throw runtime_error("Tests are from 1 to 3"); 
 
-    } 
+      if ( testType > 0 )
+        tc = testParameters[ testType-1 ];
+      
+      int requiredNodes = prod( tc.tileSplit );
+
+      if ( testType > 0 )
+        if ( worldSize < requiredNodes ){
+          std::ostringstream ss;
+          ss << "Test " << testType << " requires " 
+            << requiredNodes << " minimum."; 
+          throw runtime_error( ss.str() ); 
+        }
+    }
 
     // communicate test type 
     MPI_Bcast( &testType, 1, MPI_INT, 0, MPI_COMM_WORLD );
 
     if ( testType == 0 ){
-
-      // TODO: communicate all inputs
-      throw runtime_error("Not implemented yet");
-    }
-
-    else{
-
-      switch (testType ){
-        case 1: 
-          tileSplit = { 3 };
-          periodic  = { 1 };
-          reorder = 1; 
-          break;
-
-        case 2:
-          tileSplit = { 3, 3 };
-          periodic  = { 1, 1 };
-          reorder = 1; 
-          break;
-
-        case 3:
-          tileSplit = { 3, 3, 3 };
-          periodic  = { 1, 1, 1 };
-          reorder = 1; 
-          break;
+      // marshalling?
+      int d;
+      if ( worldRank == 0 )
+        d = tc.tileSplit.size();
       
-      }
-    
-    }
+      MPI_Bcast( &d, 1, MPI_INT, 0, MPI_COMM_WORLD );
 
+      if ( worldRank != 0 ){
+        tc.tileSplit.resize(d); 
+        tc.periodic.resize(d); 
+      }
+
+      MPI_Bcast( &(tc.tileSplit[0]), d, MPI_INT, 0, MPI_COMM_WORLD );
+      MPI_Bcast( &(tc.periodic[0]), d, MPI_INT, 0, MPI_COMM_WORLD );
+      MPI_Bcast( &(tc.reorder), 1, MPI_INT, 0, MPI_COMM_WORLD );
+
+    }
+    else
+      tc = testParameters[ testType-1 ];
+     
     Logger Log;
-    CartSplitter cs( tileSplit, periodic, MPI_COMM_WORLD, reorder );
+    CartSplitter cs( tc.tileSplit, tc.periodic, MPI_COMM_WORLD, tc.reorder );
     
     if ( cs.inGrid() ){
 
