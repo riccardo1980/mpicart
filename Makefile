@@ -49,9 +49,9 @@ OBJS = $(SRCS:%.cpp=$(OBJDIR)/%.o$(SUFFIX))
 
 .PHONY: all clean cleanall makedir
 
-lib: makedir $(LIBDIR)/libmpicart$(SUFFIX).a
+lib: makelibdir $(LIBDIR)/libmpicart$(SUFFIX).a
 
-test: makedir $(BINDIR)/mpicart$(SUFFIX) $(BINDIR)/2d_halo_scatter$(SUFFIX)
+test: maketestdir lib $(BINDIR)/2d_halo_scatter$(SUFFIX)
 
 all: makedir \
   $(LIBDIR)/libmpicart$(SUFFIX).a \
@@ -62,6 +62,14 @@ all: makedir \
 $(OBJDIR)/%.o$(SUFFIX): $(SRCDIR)/%.cpp $(HDRS)
 	@echo compiling $@
 	$(VERB)$(CXX) -c -o $@ $(CXXFLAGS) $<
+
+# LIBRARY
+
+$(LIBDIR)/libmpicart$(SUFFIX).a: $(OBJS)
+	@echo creating $@
+	$(VERB)ar rcs $@ $^
+
+# TESTS
 
 # COMPILATION: main files
 
@@ -83,15 +91,14 @@ $(BINDIR)/2d_halo_scatter$(SUFFIX): $(OBJDIR)/2d_halo_scatter.o$(SUFFIX) $(LIBDI
 	@echo linking $@
 	$(VERB)$(LD) -o $@ $< $(LFLAGS) -L $(LIBDIR) -lmpicart$(SUFFIX)
 
-
-$(LIBDIR)/libmpicart.a: $(OBJS)
-	@echo creating $@
-	$(VERB)ar rcs $@ $^
-
 doc:
 	doxygen mpicart.doxy
 
-makedir:
+makelibdir:
+	$(VERB)mkdir -p $(OBJDIR)
+	$(VERB)mkdir -p $(LIBDIR)
+
+maketestdir:
 	$(VERB)mkdir -p $(OBJDIR)
 	$(VERB)mkdir -p $(BINDIR)
 	$(VERB)mkdir -p $(LIBDIR)
