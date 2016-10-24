@@ -19,9 +19,10 @@ make
 
 ### Tested Architectures
 
-| OS                    | compiler  | MPI library |
-| --------------------- | --------- | ----------- |
-| Linux x86_64 (Debian) | g++ 6.2.0 | MPICH 3.2   |
+| OS                       | compiler                  | MPI library |
+| ------------------------ | ------------------------- | ----------- |
+| Linux x86_64 (Debian)    | g++ 6.2.0                 | MPICH 3.2   |
+| OS X 10.11.6 (El Capitan)| g++ 4.7.4 (MacPorts gcc47)| MPICH 3.0   |
 
 ## Author
 
