@@ -24,6 +24,19 @@ make
 ```
 For debug version, use `-DCMAKE_BUILD_TYPE=Debug` flag on cmake step.
 
+### Tests
+* **mpicart\_test**: tests the generation of a cartesian grid, usage: 
+
+```
+mpirun -np  3 ./mpicart_test 1   # 1-d cartesian grid
+mpirun -np  9 ./mpicart_test 2   # 2-d cartesian grid
+mpirun -np 27 ./mpicart_test 3   # 3-d cartesian grid 
+``` 
+
+TODO: describe custom grid parameters. 
+
+* **2d\_halo\_scatter\_test**: tests the halo distribution on a 2-d grid.
+
 ### Tested Architectures
 
 | OS                       | compiler                  | MPI library |

@@ -136,6 +136,7 @@ static const testconfig testParameters[] = {
   { .tileSplit = {3,3}, .periodic = {1,1}, .reorder = 1 },
   { .tileSplit = {3,3,3}, .periodic = {1,1,1}, .reorder = 1 } };
 
+#define MAXDIM 10
 int main(int argc, char *argv[]){
   try {
    
@@ -152,10 +153,12 @@ int main(int argc, char *argv[]){
         case 2: // selected a predefined test
           std::istringstream( argv[1] ) >> testType;
           break;
-        case 1: // dummy for tc communication test
-          tc.tileSplit = { 1, 2, 3 };
+        case 4: 
+          testType = 0;
+          // dummy for tc communication test
+          tc.tileSplit = { 1, 2, 3, 4 };
           tc.reorder   = 1;
-          tc.periodic  = { 0, 0, 0 };
+          tc.periodic  = { 0, 0, 0, 0 };
           break;  
         default:
           throw runtime_error("Select a test"); 
@@ -170,42 +173,71 @@ int main(int argc, char *argv[]){
       
       int requiredNodes = prod( tc.tileSplit );
 
-      if ( testType > 0 )
-        if ( worldSize < requiredNodes ){
-          std::ostringstream ss;
-          ss << "Test " << testType << " requires " 
-            << requiredNodes << " minimum."; 
-          throw runtime_error( ss.str() ); 
-        }
+      if ( worldSize < requiredNodes ){
+        std::ostringstream ss;
+        ss << "Test requires a minimum of " 
+          << requiredNodes << " nodes."; 
+        throw runtime_error( ss.str() ); 
+      }
     }
 
     // communicate test type 
     MPI_Bcast( &testType, 1, MPI_INT, 0, MPI_COMM_WORLD );
-
+    
     if ( testType == 0 ){
-      // marshalling?
-      int d;
-      if ( worldRank == 0 )
-        d = tc.tileSplit.size();
-      
-      MPI_Bcast( &d, 1, MPI_INT, 0, MPI_COMM_WORLD );
+
+      // instead of having a fixed MAXDIM, communicate both
+      // test type and d?
+      int maxDim = (2+ 2*MAXDIM) * sizeof(int);
+      std::vector<char> outbuf( maxDim );
+
+      if ( worldRank == 0){
+        int position = 0;
+        int d = tc.tileSplit.size();
+        MPI_Pack( &d, 1, MPI_INT, &outbuf[0], maxDim, &position, MPI_COMM_WORLD );
+        MPI_Pack( &( tc.tileSplit[0] ), d, MPI_INT, &outbuf[0], maxDim, &position, 
+            MPI_COMM_WORLD );
+        MPI_Pack( &( tc.periodic[0] ), d, MPI_INT, &outbuf[0], maxDim, &position, 
+            MPI_COMM_WORLD );
+        MPI_Pack( &( tc.reorder ), 1, MPI_INT, &outbuf[0], maxDim, &position, 
+            MPI_COMM_WORLD );
+      } 
+
+      MPI_Bcast( &outbuf[0], maxDim, MPI_PACKED, 0, MPI_COMM_WORLD );
 
       if ( worldRank != 0 ){
+        int position = 0, d;
+        MPI_Unpack( &outbuf[0], maxDim, &position, &d, 1, MPI_INT, MPI_COMM_WORLD); 
+        
         tc.tileSplit.resize(d); 
         tc.periodic.resize(d); 
+        
+        MPI_Unpack( &outbuf[0], maxDim, &position, &(tc.tileSplit[0]), d, MPI_INT, 
+            MPI_COMM_WORLD); 
+        MPI_Unpack( &outbuf[0], maxDim, &position, &(tc.periodic[0]), d, MPI_INT, 
+            MPI_COMM_WORLD); 
+        MPI_Unpack( &outbuf[0], maxDim, &position, &(tc.reorder), 1, MPI_INT, 
+            MPI_COMM_WORLD); 
       }
-
-      MPI_Bcast( &(tc.tileSplit[0]), d, MPI_INT, 0, MPI_COMM_WORLD );
-      MPI_Bcast( &(tc.periodic[0]), d, MPI_INT, 0, MPI_COMM_WORLD );
-      MPI_Bcast( &(tc.reorder), 1, MPI_INT, 0, MPI_COMM_WORLD );
-
+    
     }
     else
       tc = testParameters[ testType-1 ];
-     
+
+    for( int ii = 0; ii < worldSize; ++ii ){
+      if( worldRank == ii ){
+        cout << "tileSplit: " << pretty<int>( tc.tileSplit ).separator(", ") << endl; 
+        cout << "periodic: " << pretty<int>( tc.periodic ).separator(", ") << endl; 
+        cout << "reorder: " << tc.reorder << endl; 
+      }
+      MPI_Barrier(MPI_COMM_WORLD);
+    }     
+    //exit(EXIT_SUCCESS);
+
+
     Logger Log;
     CartSplitter cs( tc.tileSplit, tc.periodic, MPI_COMM_WORLD, tc.reorder );
-    
+        
     if ( cs.inGrid() ){
 
       // discover my coordinates 
