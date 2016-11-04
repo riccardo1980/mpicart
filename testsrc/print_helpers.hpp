@@ -53,18 +53,6 @@ class pretty< std::vector<T> > {
       return *this; 
     } 
 
-    pretty< std::vector<T> >& preamble (const char *pre){
-      return preamble( std::string(pre) ); 
-    } 
-
-    pretty< std::vector<T> >& separator (const char *sep){
-      return separator( std::string(sep) ); 
-    } 
-
-    pretty< std::vector<T> >& epilogue (const char *epi){
-      return epilogue( std::string(epi) ); 
-    } 
-
   private:
     std::string _preamble;
     std::string _separator;
@@ -140,22 +128,6 @@ class pretty< std::map<F,S,C,A> > {
       _printval = false;
       return *this; 
     } 
-
-    pretty< std::map<F,S,C,A> >& preamble (const char *pre){
-      return preamble( std::string(pre) ); 
-    } 
-
-    pretty< std::map<F,S,C,A> >& tuple_separator (const char *sep){
-      return tuple_separator( std::string(sep) ); 
-    } 
-
-    pretty< std::map<F,S,C,A> >& keyval_separator (const char *sep){
-      return keyval_separator( std::string(sep) ); 
-    } 
-
-    pretty< std::map<F,S,C,A> >& epilogue (const char *epi){
-      return epilogue( std::string(epi) ); 
-    }
 
   private:
     std::string _preamble;
