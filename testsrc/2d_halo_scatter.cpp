@@ -24,6 +24,7 @@
 #include "logger.hpp"
 #include "vector_helper.hpp"
 #include "CartSplitter.hpp"
+#include "test_helpers.hpp"
 
 using std::exception;
 using std::cerr;
@@ -37,58 +38,11 @@ using namespace vector_helper;
 //#define PRINT_ALL
 //#define PRINT_LOCAL
 
-namespace inputCheck {
-
-  static const std::map < std::string, HaloType::type > halo_set = { 
+static const std::map < std::string, HaloType::type,  case_insensitive_less > halo_set = { 
     {"NO", HaloType::Unused}, 
     {"FULL", HaloType::Full},
     {"TIGHT", HaloType::Tight} 
   };
-
-  template <typename F, typename S>
-    std::ostream& operator<< ( std::ostream& os, const std::map<F,S>& mymap ){
-      typename std::map< std::string, HaloType::type >::const_iterator it = mymap.begin(); 
-      typename std::map< std::string, HaloType::type >::const_iterator it_end = mymap.end(); 
-
-      for( ; it != it_end; ++it )
-        os << " " << it->first;
-
-      return os;
-
-    }
-
-  /**
-   * Controls the string containing requested halo type and
-   * sets output accordingly
-   *
-   * @param in const string storing halo command line parameter
-   * @return requested halo type
-   *
-   * If uppercase of input string is gound in global halo_set map,
-   * corrispondent value is returned, otherwise a runime error 
-   * is thrown. Exception message will then contain accepted strings for
-   * halo command line parameter.
-   *
-   */
-  HaloType::type haloFromInput( const std::string& in ){
-
-    std::string in_upper( in );
-    std::transform( in_upper.begin(), in_upper.end(), in_upper.begin(), toupper ); 
-
-    std::map< std::string, HaloType::type >::const_iterator ht 
-      = halo_set.find( in_upper );  
-
-    if ( ht != halo_set.end() )
-      return ht->second;
-    else{
-      std::stringstream ss;
-      ss << "Halo type must be one of: "
-        << halo_set;
-      throw runtime_error( ss.str() );
-    } 
-
-  }
-}
 
 int main (int argc, char *argv[]){
   try{
@@ -106,7 +60,18 @@ int main (int argc, char *argv[]){
     if ( worldRank == 0) {
       switch ( argc ){
         case 2:
-          haloType = inputCheck::haloFromInput( argv[1] );
+          try {
+          haloType = valueFromKey( 
+              std::string( argv[1]), halo_set );
+          }
+          catch ( exception& e ){
+               std::stringstream ss;
+               ss << e.what() << endl
+                 << "halo type must be one of: "
+                 << make_pretty(halo_set).tuple_separator(" | ").preamble("[ ")
+                 .epilogue(" ]");
+               throw runtime_error( ss.str() ); 
+          }
       }
     }
 

@@ -22,6 +22,8 @@
 #include "CartSplitter.hpp"
 #include "vector_helper.hpp"
 
+#include "test_helpers.hpp"
+
 using std::exception;
 using std::cerr;
 using std::cout;
@@ -29,88 +31,6 @@ using std::endl;
 using std::vector;
 using std::runtime_error;
 
-template <typename T>
-class pretty;
-
-template <typename T>
-std::ostream& operator<< ( std::ostream& os, 
-    const pretty<T>& data );
-
-template <typename T>
-class pretty {
-  public:
-    explicit pretty( const std::vector<T>& data ) :
-      _data( data ), _preamble(), _separator(), 
-      _epilogue(), _showpos(false) {};
-    friend 
-      std::ostream& operator<<<> ( std::ostream& os,
-          const pretty<T>& data );
-
-    pretty<T>& preamble (const std::string& pre){
-      _preamble = pre;
-      return *this;
-    } 
-
-    pretty<T>& separator (const std::string& sep){
-      _separator = sep;
-      return *this;
-    } 
-
-    pretty<T>& epilogue (const std::string& epi){
-      _epilogue = epi;
-      return *this;
-    } 
-
-    pretty<T>& showpos (){
-      _showpos = true;
-      return *this; 
-    } 
-
-    pretty<T>& noshowpos (){
-      _showpos = false;
-      return *this; 
-    } 
-
-    pretty<T>& preamble (const char *pre){
-      return preamble( std::string(pre) ); 
-    } 
-
-    pretty<T>& separator (const char *sep){
-      return separator( std::string(sep) ); 
-    } 
-
-    pretty<T>& epilogue (const char *epi){
-      return epilogue( std::string(epi) ); 
-    } 
-
-  private:
-    std::string _preamble;
-    std::string _separator;
-    std::string _epilogue;
-    bool _showpos;
-    const std::vector<T>& _data;
-};
-
-template <typename T>
-std::ostream& operator<< ( std::ostream& os, 
-    const pretty<T>& data ){
-
-  std::ios::fmtflags f ( os.flags() );
-
-  if ( data._showpos )
-    os << std::showpos;
-
-  os << std::scientific;
-  os << data._preamble;
-  typename std::vector<T>::const_iterator it = data._data.begin(); 
-  for ( ; it < data._data.end()-1; ++it )
-   os << *it << data._separator;  
-
-  os << *it << data._epilogue;
-  os.flags( f );
-
-  return os; 
-}
 
 using namespace vector_helper;
 
@@ -132,9 +52,10 @@ struct testconfig {
 };
 
 static const testconfig testParameters[] = { 
-  { .tileSplit = {3}, .periodic = {1}, .reorder = 1 },
-  { .tileSplit = {3,3}, .periodic = {1,1}, .reorder = 1 },
-  { .tileSplit = {3,3,3}, .periodic = {1,1,1}, .reorder = 1 } };
+  { {3},     {1},     1 },
+  { {3,3},   {1,1},   1 },
+  { {3,3,3}, {1,1,1}, 1 }
+};
 
 #define MAXDIM 10
 int main(int argc, char *argv[]){
@@ -155,10 +76,9 @@ int main(int argc, char *argv[]){
           break;
         case 4: 
           testType = 0;
-          // dummy for tc communication test
-          tc.tileSplit = { 1, 2, 3, 4 };
-          tc.reorder   = 1;
-          tc.periodic  = { 0, 0, 0, 0 };
+          vectorFromString( tc.tileSplit, argv[1] );
+          std::istringstream( argv[2] ) >> tc.reorder;
+          vectorFromString( tc.periodic, argv[3] );
           break;  
         default:
           throw runtime_error("Select a test"); 
@@ -170,7 +90,7 @@ int main(int argc, char *argv[]){
 
       if ( testType > 0 )
         tc = testParameters[ testType-1 ];
-      
+
       int requiredNodes = prod( tc.tileSplit );
 
       if ( worldSize < requiredNodes ){
@@ -224,17 +144,6 @@ int main(int argc, char *argv[]){
     else
       tc = testParameters[ testType-1 ];
 
-    for( int ii = 0; ii < worldSize; ++ii ){
-      if( worldRank == ii ){
-        cout << "tileSplit: " << pretty<int>( tc.tileSplit ).separator(", ") << endl; 
-        cout << "periodic: " << pretty<int>( tc.periodic ).separator(", ") << endl; 
-        cout << "reorder: " << tc.reorder << endl; 
-      }
-      MPI_Barrier(MPI_COMM_WORLD);
-    }     
-    //exit(EXIT_SUCCESS);
-
-
     Logger Log;
     CartSplitter cs( tc.tileSplit, tc.periodic, MPI_COMM_WORLD, tc.reorder );
         
@@ -263,12 +172,13 @@ int main(int argc, char *argv[]){
             << " [ " << std::setw(2)<< worldRank 
             << " / " << std::setw(2) << worldSize << " ]"
             << " coordinates:"
-            << pretty<int>( coords ).preamble(" ( ").epilogue(" ):").separator(", ")
+            << make_pretty( coords )
+            .preamble(" ( ").epilogue(" ):").separator(", ")
             << endl;
 
           for( unsigned int ii = 0; ii < neighbours.size(); ++ii ){
             cout << "   " << std::setw(2) << neighbours[ii] 
-              << pretty<int>( directions[ii] ).preamble(" ( ").epilogue(" ) ")
+              << make_pretty( directions[ii] ).preamble(" ( ").epilogue(" ) ")
               .separator(", ").showpos() 
               << endl; 
           }
