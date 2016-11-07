@@ -1,4 +1,5 @@
 
+set ( CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin )
 
 foreach( test_name 2d_halo_scatter mpicart )
   add_executable( ${test_name}_test ${test_name}.cpp)
