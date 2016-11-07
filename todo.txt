@@ -6,6 +6,7 @@ TODO:
 
 - pretty for matrices
 - remove operator<<(ostream&, vector), use pretty
+- instruct cmake to move libraries on lib after build
 
 Resources:
 http://stackoverflow.com/questions/9269399/sending-blocks-of-2d-array-in-c-using-mpi
